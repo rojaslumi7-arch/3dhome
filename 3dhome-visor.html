@@ -460,7 +460,7 @@ function renderGalleryPhoto() {
   img.style.opacity = '0';
   img.src = fotos[currentIdx].url_publica;
   img.onload = () => { img.style.opacity = '1'; };
-  document.getElementById('gallery-room-name').textContent = `Foto ${currentIdx + 1}`;
+  document.getElementById('gallery-room-name').textContent = fotos[currentIdx].etiqueta || `Foto ${currentIdx + 1}`;
   document.getElementById('gallery-room-sub').textContent = tourData.nombre;
   document.getElementById('foto-counter').textContent = `${currentIdx+1} / ${fotos.length}`;
 }
@@ -477,7 +477,7 @@ function buildStrip() {
     th.id = 'thumb-' + i;
     th.innerHTML = `
       <img src="${f.url_publica}" alt="Foto ${i+1}" loading="lazy"/>
-      <div class="scene-label">Foto ${i+1}</div>`;
+      <div class="scene-label">${f.etiqueta || 'Foto '+(i+1)}</div>`;
     th.onclick = () => goToScene(i);
     strip.appendChild(th);
   });
