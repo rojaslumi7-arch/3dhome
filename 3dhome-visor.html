@@ -221,6 +221,91 @@ html, body { height: 100%; font-family: var(--sans); background: var(--dark); co
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 .pnlm-ui .pnlm-about-msg { display: none !important; }
+
+/* ── PAYMENT WALL ── */
+#payment-wall {
+  display: none;
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(10,24,16,0.75);
+  backdrop-filter: blur(2px);
+  align-items: center; justify-content: center;
+  flex-direction: column;
+}
+#payment-wall.show { display: flex; }
+.payment-card {
+  background: #111d16;
+  border: 1px solid rgba(122,232,176,0.2);
+  border-radius: 20px;
+  padding: 2rem 2rem 1.75rem;
+  max-width: 380px; width: 90%;
+  text-align: center;
+  animation: popIn .35s ease;
+}
+@keyframes popIn { from{opacity:0;transform:scale(.94)} to{opacity:1;transform:scale(1)} }
+.payment-card .preview-badge {
+  display: inline-block;
+  background: rgba(200,151,58,0.15); color: #e8c87a;
+  border: 1px solid rgba(200,151,58,0.3);
+  border-radius: 100px; font-size: 0.72rem; font-weight: 500;
+  padding: 4px 14px; margin-bottom: 1rem;
+}
+.payment-card h2 {
+  font-family: var(--serif); font-size: 1.6rem;
+  color: white; margin-bottom: 0.5rem; line-height: 1.2;
+}
+.payment-card p {
+  font-size: 0.85rem; color: rgba(255,255,255,0.5);
+  line-height: 1.6; margin-bottom: 1.5rem;
+}
+.payment-price {
+  font-family: var(--serif); font-size: 2.5rem;
+  color: #7ae8b0; margin-bottom: 0.25rem; line-height: 1;
+}
+.payment-price span { font-size: 1rem; color: rgba(255,255,255,0.4); font-family: var(--sans); }
+.payment-type { font-size: 0.78rem; color: rgba(255,255,255,0.35); margin-bottom: 1.5rem; }
+.pay-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px;
+  background: var(--accent); color: white; border: none;
+  border-radius: 100px; font-family: var(--sans);
+  font-size: 0.95rem; font-weight: 500; cursor: pointer;
+  transition: background .2s; text-decoration: none;
+  margin-bottom: 10px;
+}
+.pay-btn:hover { background: #155a3e; }
+.pay-btn.wa { background: #1a7a3a; }
+.pay-btn.wa:hover { background: #145e2c; }
+.preview-note {
+  font-size: 0.72rem; color: rgba(255,255,255,0.25);
+  margin-top: 0.75rem; line-height: 1.5;
+}
+/* Blur overlay on viewer when in preview mode */
+.blur-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+.preview-ribbon {
+  position: fixed; top: 64px; left: 0; right: 0; z-index: 250;
+  background: rgba(200,151,58,0.15);
+  border-bottom: 1px solid rgba(200,151,58,0.25);
+  padding: 8px 1.25rem;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+  backdrop-filter: blur(8px);
+}
+.preview-ribbon p { font-size: 0.78rem; color: #e8c87a; }
+.preview-ribbon button {
+  background: #c8973a; color: white; border: none;
+  border-radius: 100px; padding: 5px 16px;
+  font-size: 0.78rem; font-weight: 500;
+  font-family: var(--sans); cursor: pointer;
+  white-space: nowrap;
+}
+/* Adjust viewer when ribbon is visible */
+.viewer-wrap.with-ribbon { top: 100px; }
+.scene-strip.with-ribbon { bottom: 0; }
 </style>
 </head>
 <body>
@@ -292,6 +377,30 @@ html, body { height: 100%; font-family: var(--sans); background: var(--dark); co
     </div>
     <div class="embed-box" onclick="copyEmbed()" id="embed-box-display"></div>
     <button class="modal-close" onclick="closeShare()">Cerrar</button>
+  </div>
+</div>
+
+<!-- PREVIEW RIBBON -->
+<div class="preview-ribbon" id="preview-ribbon" style="display:none">
+  <p>👁️ Vista previa — Esta es una muestra de tu tour. Completa el pago para activar tu link definitivo.</p>
+  <button onclick="showPaymentWall()">Ver planes y pagar →</button>
+</div>
+
+<!-- PAYMENT WALL -->
+<div id="payment-wall">
+  <div class="payment-card">
+    <div class="preview-badge">⭐ Tu tour está listo</div>
+    <h2>Activa tu tour virtual</h2>
+    <p>Ya procesamos tus fotos. Completa el pago para recibir tu link definitivo y compartirlo con tus clientes.</p>
+    <div class="payment-price">$199 <span>MXN</span></div>
+    <div class="payment-type">Tour individual · Link permanente · 12 meses</div>
+    <a class="pay-btn wa" id="wa-pay-btn" href="#" target="_blank">
+      💬 Pagar por WhatsApp
+    </a>
+    <button class="pay-btn" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15)" onclick="closePaymentWall()">
+      Ver mi tour primero
+    </button>
+    <p class="preview-note">Al hacer clic en WhatsApp, un asesor de 3DHome te contactará para confirmar el pago y activar tu tour en menos de 2 horas.</p>
   </div>
 </div>
 
@@ -401,6 +510,9 @@ async function loadTour() {
 
   // 8. Iniciar visor según el modo del tour
   initViewer(tour.modo);
+
+  // 9. Activar modo preview si aplica
+  initPreviewMode(tour);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -547,6 +659,55 @@ function setMeta(prop, content) {
   let el = document.querySelector(`meta[property="${prop}"]`);
   if (!el) { el = document.createElement('meta'); el.setAttribute('property', prop); document.head.appendChild(el); }
   el.setAttribute('content', content);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PREVIEW MODE — muestra ribbon y muro de pago
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const WA_NUMBER = '526461234567'; // ← CAMBIA ESTO por tu número de WhatsApp con código de país
+
+function isPreviewMode() {
+  return new URLSearchParams(window.location.search).get('preview') === '1';
+}
+
+function initPreviewMode(tour) {
+  if (!isPreviewMode()) return;
+
+  // Mostrar ribbon amarillo
+  const ribbon = document.getElementById('preview-ribbon');
+  ribbon.style.display = 'flex';
+  document.getElementById('viewer-wrap').classList.add('with-ribbon');
+  document.getElementById('scene-strip').classList.add('with-ribbon');
+
+  // Configurar link de WhatsApp con datos del tour
+  const msg = `Hola, acabo de crear mi tour virtual en 3DHome.\n\nPropiedad: ${tour.nombre}\n${tour.ciudad ? 'Ciudad: '+tour.ciudad+'\n' : ''}Quiero activar mi tour y pagar $199 MXN.\n\nMi slug: ${tour.slug}`;
+  document.getElementById('wa-pay-btn').href = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
+
+  // Mostrar muro de pago automáticamente después de 8 segundos
+  // (el cliente puede ver el tour un momento antes de que aparezca)
+  setTimeout(() => {
+    showPaymentWall();
+  }, 8000);
+}
+
+function showPaymentWall() {
+  document.getElementById('payment-wall').classList.add('show');
+  // Agregar blur al viewer
+  const vw = document.getElementById('viewer-wrap');
+  if (!document.getElementById('blur-overlay')) {
+    const bl = document.createElement('div');
+    bl.className = 'blur-overlay';
+    bl.id = 'blur-overlay';
+    vw.appendChild(bl);
+  }
+}
+
+function closePaymentWall() {
+  document.getElementById('payment-wall').classList.remove('show');
+  // Quitar blur temporalmente — vuelve a aparecer en 30 segundos
+  const bl = document.getElementById('blur-overlay');
+  if (bl) bl.remove();
+  setTimeout(() => showPaymentWall(), 30000);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
