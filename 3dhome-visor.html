@@ -3,27 +3,57 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>3DHome Visor — Casa Lomas · Tour Virtual</title>
-<meta property="og:title" content="Casa Lomas de Chapultepec — Tour Virtual 3D"/>
-<meta property="og:description" content="4 recámaras · 280 m² · Recorre cada espacio desde tu celular"/>
+<title>3DHome — Tour Virtual</title>
 <meta property="og:type" content="website"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-<!-- Pannellum para fotos 360/panorámicas -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
 <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --ink: #0b0f0d; --ink2: #3a3d3b; --ink3: #7a7d7b;
-  --cream: #f5f2ec; --cream2: #ede9e1;
-  --accent: #1a6b4a; --accent2: #2d9268; --accent-pale: #e8f4ee;
+  --accent: #1a6b4a; --accent2: #2d9268;
   --dark: #0a1810; --dark2: #0f2318;
-  --white: #ffffff;
   --serif: 'DM Serif Display', Georgia, serif;
   --sans: 'DM Sans', system-ui, sans-serif;
 }
-html, body { height: 100%; font-family: var(--sans); background: var(--dark); color: var(--white); overflow: hidden; }
+html, body { height: 100%; font-family: var(--sans); background: var(--dark); color: white; overflow: hidden; }
+
+/* ── LOADING SCREEN ── */
+#loading-screen {
+  position: fixed; inset: 0; z-index: 999;
+  background: var(--dark);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1.5rem;
+}
+.loading-logo { font-family: var(--serif); font-size: 2rem; color: white; }
+.loading-logo span { color: #7ae8b0; }
+.loading-spinner {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid rgba(122,232,176,0.2);
+  border-top-color: #7ae8b0;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-label { font-size: 0.85rem; color: rgba(255,255,255,0.4); }
+
+/* ── ERROR SCREEN ── */
+#error-screen {
+  position: fixed; inset: 0; z-index: 998;
+  background: var(--dark);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1rem;
+  text-align: center; padding: 2rem;
+}
+#error-screen h2 { font-family: var(--serif); font-size: 1.75rem; }
+#error-screen p { font-size: 0.9rem; color: rgba(255,255,255,0.5); max-width: 320px; line-height: 1.6; }
+.error-btn {
+  background: var(--accent); color: white; border: none;
+  border-radius: 100px; padding: 10px 24px;
+  font-family: var(--sans); font-size: 0.9rem; cursor: pointer;
+  margin-top: 0.5rem;
+}
 
 /* ── TOP BAR ── */
 .topbar {
@@ -31,8 +61,7 @@ html, body { height: 100%; font-family: var(--sans); background: var(--dark); co
   height: 56px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 1.25rem;
-  background: rgba(10,24,16,0.85);
-  backdrop-filter: blur(14px);
+  background: rgba(10,24,16,0.85); backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 .topbar-logo { font-family: var(--serif); font-size: 1.15rem; color: rgba(255,255,255,0.9); }
@@ -42,393 +71,217 @@ html, body { height: 100%; font-family: var(--sans); background: var(--dark); co
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 .share-btn {
   display: flex; align-items: center; gap: 6px;
-  background: var(--accent); color: white;
-  border: none; border-radius: 100px;
-  padding: 7px 16px; font-size: 0.8rem; font-weight: 500;
-  cursor: pointer; font-family: var(--sans);
-  transition: background .2s;
+  background: var(--accent); color: white; border: none;
+  border-radius: 100px; padding: 7px 16px;
+  font-size: 0.8rem; font-weight: 500; cursor: pointer;
+  font-family: var(--sans); transition: background .2s;
 }
 .share-btn:hover { background: #155a3e; }
-.icon-btn {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: rgba(255,255,255,0.7);
-  transition: background .2s;
-}
-.icon-btn:hover { background: rgba(255,255,255,0.15); }
 
-/* ── MAIN VIEWER AREA ── */
+/* ── VIEWER ── */
 .viewer-wrap {
-  position: fixed;
-  top: 56px; bottom: 90px; left: 0; right: 0;
+  position: fixed; top: 56px; bottom: 90px; left: 0; right: 0;
   background: var(--dark);
 }
-#pannellum-container { width: 100%; height: 100%; }
+#pannellum-container { width: 100%; height: 100%; display: none; }
+#pannellum-container.active { display: block; }
 #gallery-container {
-  width: 100%; height: 100%;
-  display: none;
+  width: 100%; height: 100%; display: none;
   align-items: center; justify-content: center;
-  position: relative;
-  background: #060e09;
-  overflow: hidden;
+  position: relative; background: #060e09; overflow: hidden;
 }
 #gallery-container.active { display: flex; }
-#pannellum-container.active { display: block; }
 
-/* Gallery mode */
-.gallery-img {
+/* Gallery */
+#gallery-img {
   max-width: 100%; max-height: 100%;
-  object-fit: contain;
-  border-radius: 4px;
-  transition: opacity .35s ease;
+  object-fit: contain; border-radius: 4px;
+  transition: opacity .3s ease;
 }
-/* Room label overlay */
-.room-overlay {
-  position: absolute; top: 72px; left: 20px;
-  background: rgba(10,24,16,0.75);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
-  padding: 9px 14px;
-  font-size: 0.8rem; color: rgba(255,255,255,0.6);
-  pointer-events: none;
-}
-.room-overlay strong { display: block; font-size: 0.92rem; color: white; margin-bottom: 1px; }
-
-/* Gallery nav arrows */
 .gallery-arrow {
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 44px; height: 44px; border-radius: 50%;
-  background: rgba(10,24,16,0.7);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(10,24,16,0.7); border: 1px solid rgba(255,255,255,0.15);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; color: white; font-size: 1.3rem;
-  transition: background .2s;
-  z-index: 10;
+  transition: background .2s; z-index: 10;
 }
 .gallery-arrow:hover { background: rgba(26,107,74,0.5); }
 .gallery-arrow.left { left: 16px; }
 .gallery-arrow.right { right: 16px; }
 
-/* Hotspots in gallery mode */
-.hotspot-layer {
-  position: absolute; inset: 0;
+/* Overlays */
+.room-overlay {
+  position: absolute; top: 72px; left: 20px;
+  background: rgba(10,24,16,0.75); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+  padding: 9px 14px; font-size: 0.8rem; color: rgba(255,255,255,0.6);
   pointer-events: none;
 }
-.hs {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  pointer-events: all;
-  cursor: pointer;
-}
-.hs-ring {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(45,146,104,0.25);
-  border: 2px solid rgba(122,232,176,0.7);
-  display: flex; align-items: center; justify-content: center;
-  animation: pulseRing 2.2s ease-in-out infinite;
-  transition: background .2s;
-}
-.hs:hover .hs-ring { background: rgba(45,146,104,0.5); }
-.hs-ring::after {
-  content: ''; width: 12px; height: 12px; border-radius: 50%;
-  background: #7ae8b0;
-}
-@keyframes pulseRing {
-  0%,100%{ box-shadow: 0 0 0 0 rgba(122,232,176,0.4); }
-  50%{ box-shadow: 0 0 0 8px rgba(122,232,176,0); }
-}
-.hs-label {
-  position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
-  background: rgba(10,24,16,0.85);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 0.72rem; color: rgba(255,255,255,0.8);
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-/* Mode badge */
+.room-overlay strong { display: block; font-size: 0.92rem; color: white; margin-bottom: 1px; }
 .mode-badge {
   position: absolute; top: 72px; right: 16px;
-  background: rgba(10,24,16,0.75);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 100px;
-  padding: 5px 12px;
-  font-size: 0.72rem; color: rgba(255,255,255,0.55);
-  display: flex; align-items: center; gap: 6px;
+  background: rgba(10,24,16,0.75); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 100px;
+  padding: 5px 12px; font-size: 0.72rem; color: rgba(255,255,255,0.55);
+  display: flex; align-items: center; gap: 6px; pointer-events: none;
 }
 .mode-dot { width: 6px; height: 6px; border-radius: 50%; background: #7ae8b0; }
+.foto-counter {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(10,24,16,0.7); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px; padding: 4px 14px; font-size: 0.75rem;
+  color: rgba(255,255,255,0.6);
+}
 
 /* ── SCENE STRIP ── */
 .scene-strip {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
-  height: 90px;
-  background: rgba(10,24,16,0.92);
-  backdrop-filter: blur(14px);
+  height: 90px; background: rgba(10,24,16,0.92); backdrop-filter: blur(14px);
   border-top: 1px solid rgba(255,255,255,0.07);
-  display: flex; align-items: center;
-  padding: 0 1rem;
-  gap: 10px;
-  overflow-x: auto;
-  scroll-behavior: smooth;
+  display: flex; align-items: center; padding: 0 1rem; gap: 10px;
+  overflow-x: auto; scroll-behavior: smooth;
 }
 .scene-strip::-webkit-scrollbar { height: 0; }
 .scene-thumb {
-  flex-shrink: 0;
-  width: 100px; height: 66px;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  overflow: hidden;
-  position: relative;
+  flex-shrink: 0; width: 100px; height: 66px;
+  border-radius: 8px; border: 2px solid transparent;
+  cursor: pointer; overflow: hidden; position: relative;
   transition: border-color .2s, transform .15s;
   background: var(--dark2);
 }
 .scene-thumb:hover { transform: translateY(-2px); border-color: rgba(122,232,176,0.4); }
 .scene-thumb.active { border-color: #7ae8b0; }
-.scene-thumb img {
-  width: 100%; height: 100%; object-fit: cover;
-  display: block;
-}
-/* SVG placeholder thumbnail */
-.scene-thumb svg { width: 100%; height: 100%; }
+.scene-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .scene-label {
   position: absolute; bottom: 0; left: 0; right: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,0.7));
-  padding: 4px 6px 4px;
-  font-size: 0.65rem; color: rgba(255,255,255,0.8);
+  background: linear-gradient(transparent, rgba(0,0,0,0.75));
+  padding: 4px 6px; font-size: 0.62rem; color: rgba(255,255,255,0.85);
   text-align: center;
 }
-.scene-count {
-  flex-shrink: 0;
-  font-size: 0.75rem; color: rgba(255,255,255,0.3);
-  padding: 0 6px; white-space: nowrap;
-}
+.scene-count { flex-shrink: 0; font-size: 0.75rem; color: rgba(255,255,255,0.3); padding: 0 6px; white-space: nowrap; }
 
 /* ── SHARE MODAL ── */
 .modal-overlay {
-  display: none;
-  position: fixed; inset: 0; z-index: 500;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(4px);
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
   align-items: flex-end; justify-content: center;
 }
 .modal-overlay.open { display: flex; }
 .modal {
   width: 100%; max-width: 480px;
-  background: #111d16;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 20px 20px 0 0;
-  padding: 1.5rem;
+  background: #111d16; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px 20px 0 0; padding: 1.5rem;
   animation: slideUp .3s ease;
 }
 @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
 .modal h3 { font-family: var(--serif); font-size: 1.25rem; margin-bottom: 0.25rem; }
 .modal-url {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-family: monospace; font-size: 0.82rem;
-  color: #7ae8b0;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 10px 14px;
+  font-family: monospace; font-size: 0.82rem; color: #7ae8b0;
   display: flex; justify-content: space-between; align-items: center;
-  margin: 1rem 0;
-  cursor: pointer;
-  transition: background .2s;
+  margin: 1rem 0; cursor: pointer; transition: background .2s;
+  word-break: break-all;
 }
 .modal-url:hover { background: rgba(255,255,255,0.1); }
-.modal-url span { color: rgba(255,255,255,0.35); }
 .share-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 1rem; }
 .share-item {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  padding: 12px 8px;
-  text-align: center; cursor: pointer;
-  transition: background .2s, border-color .2s;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 12px 8px; text-align: center;
+  cursor: pointer; transition: background .2s, border-color .2s;
 }
 .share-item:hover { background: rgba(45,146,104,0.2); border-color: rgba(122,232,176,0.35); }
 .share-item .ico { font-size: 1.5rem; display: block; margin-bottom: 4px; }
 .share-item span { font-size: 0.72rem; color: rgba(255,255,255,0.6); }
 .embed-box {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-family: monospace; font-size: 0.72rem;
-  color: rgba(255,255,255,0.45);
-  margin-bottom: 1rem;
-  cursor: pointer;
-  transition: background .2s;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 10px 14px;
+  font-family: monospace; font-size: 0.72rem; color: rgba(255,255,255,0.45);
+  margin-bottom: 1rem; cursor: pointer; transition: background .2s;
+  word-break: break-all;
 }
 .embed-box:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
 .modal-close {
-  width: 100%; padding: 11px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 100px; color: rgba(255,255,255,0.6);
-  font-family: var(--sans); font-size: 0.88rem;
-  cursor: pointer; transition: background .2s;
+  width: 100%; padding: 11px; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 100px;
+  color: rgba(255,255,255,0.6); font-family: var(--sans);
+  font-size: 0.88rem; cursor: pointer; transition: background .2s;
 }
 .modal-close:hover { background: rgba(255,255,255,0.12); }
 
-/* ── COPY TOAST ── */
+/* Toast */
 .toast {
   position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(10px);
-  background: #1a6b4a; color: white;
-  padding: 8px 20px; border-radius: 100px; font-size: 0.82rem;
+  background: #1a6b4a; color: white; padding: 8px 20px;
+  border-radius: 100px; font-size: 0.82rem;
   opacity: 0; transition: opacity .25s, transform .25s;
   pointer-events: none; z-index: 999;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ── MODE SELECTOR (demo UI) ── */
-.demo-controls {
-  position: fixed; top: 66px; left: 50%; transform: translateX(-50%);
-  z-index: 150;
-  display: flex; gap: 6px;
-  background: rgba(10,24,16,0.8);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 100px;
-  padding: 4px;
-}
-.mode-tab {
-  padding: 5px 14px; border-radius: 100px; font-size: 0.72rem;
-  cursor: pointer; color: rgba(255,255,255,0.5);
-  font-family: var(--sans); border: none; background: transparent;
-  transition: background .2s, color .2s;
-}
-.mode-tab.active { background: var(--accent); color: white; }
-
-/* Pannellum overrides */
 .pnlm-ui .pnlm-about-msg { display: none !important; }
-.pnlm-controls-container { bottom: 8px !important; right: 8px !important; top: auto !important; }
-.pnlm-zoom-controls { display: none; }
-
-/* Info panel */
-.info-panel {
-  position: absolute; bottom: 10px; left: 16px;
-  background: rgba(10,24,16,0.75); backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
-  padding: 9px 14px; font-size: 0.8rem; color: rgba(255,255,255,0.55);
-  pointer-events: none;
-}
-.info-panel strong { color: white; font-size: 0.88rem; display: block; margin-bottom: 1px; }
 </style>
 </head>
 <body>
 
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="loading-logo">3D<span>Home</span></div>
+  <div class="loading-spinner"></div>
+  <div class="loading-label" id="loading-label">Cargando tour...</div>
+</div>
+
+<!-- ERROR -->
+<div id="error-screen">
+  <div style="font-size:3rem">🏚️</div>
+  <h2>Tour no encontrado</h2>
+  <p id="error-msg">Este tour no existe o el link es incorrecto. Verifica la URL e intenta de nuevo.</p>
+  <button class="error-btn" onclick="window.location.href='/'">← Ir a 3DHome</button>
+</div>
+
 <!-- TOP BAR -->
-<div class="topbar">
+<div class="topbar" id="topbar" style="display:none">
   <div class="topbar-logo">3D<span>Home</span></div>
   <div class="topbar-title">
-    <strong>Casa Lomas de Chapultepec</strong>
-    4 rec · 280 m² · CDMX
+    <strong id="tour-nombre">Cargando...</strong>
+    <span id="tour-meta"></span>
   </div>
   <div class="topbar-actions">
     <button class="share-btn" onclick="openShare()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
       Compartir
     </button>
-    <div class="icon-btn" title="Información" onclick="alert('Propiedad: Casa Lomas · 4 rec · 3 baños · 280 m²\nContacto: +52 55 0000-0000')">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-    </div>
   </div>
 </div>
 
-<!-- DEMO MODE SELECTOR (solo para demo — en producción se detecta automáticamente) -->
-<div class="demo-controls">
-  <button class="mode-tab" onclick="setMode('gallery')">📷 Fotos normales</button>
-  <button class="mode-tab" onclick="setMode('pano')">🌅 Panorámicas</button>
-  <button class="mode-tab active" onclick="setMode('360')">🌐 360° completo</button>
-</div>
-
-<!-- VIEWER AREA -->
-<div class="viewer-wrap">
-
-  <!-- PANNELLUM (360 y panorámicas) -->
-  <div id="pannellum-container" class="active"></div>
-
-  <!-- GALERÍA (fotos normales) -->
+<!-- VIEWER -->
+<div class="viewer-wrap" id="viewer-wrap" style="display:none">
+  <div id="pannellum-container"></div>
   <div id="gallery-container">
+    <img id="gallery-img" src="" alt="Foto de la propiedad"/>
     <div class="room-overlay">
-      <strong id="gallery-room-name">Sala principal</strong>
-      <span id="gallery-room-sub">Haz clic en los puntos para navegar</span>
+      <strong id="gallery-room-name">Foto 1</strong>
+      <span id="gallery-room-sub">Navega con las flechas</span>
     </div>
-    <div class="mode-badge" id="mode-badge-gallery">
-      <span class="mode-dot"></span> Modo galería interactiva
+    <div class="mode-badge">
+      <span class="mode-dot"></span> Galería interactiva
     </div>
-    <!-- SVG Scene: sala -->
-    <svg id="scene-svg" viewBox="0 0 800 500" style="max-width:100%;max-height:100%">
-      <!-- Piso -->
-      <polygon points="0,500 800,500 600,300 200,300" fill="#0f2820"/>
-      <!-- Pared fondo -->
-      <rect x="200" y="80" width="400" height="220" fill="#0a1f14"/>
-      <!-- Paredes lat -->
-      <polygon points="0,500 200,300 200,80 0,120" fill="#0d2318"/>
-      <polygon points="800,500 600,300 600,80 800,120" fill="#0d2318"/>
-      <!-- Techo -->
-      <polygon points="0,120 800,120 600,80 200,80" fill="#07140d"/>
-      <!-- Ventana -->
-      <rect x="310" y="110" width="180" height="130" rx="4" fill="rgba(45,146,104,0.15)" stroke="rgba(45,146,104,0.4)" stroke-width="1.5"/>
-      <rect x="326" y="126" width="70" height="98" rx="2" fill="rgba(122,232,176,0.07)"/>
-      <rect x="404" y="126" width="70" height="98" rx="2" fill="rgba(122,232,176,0.07)"/>
-      <!-- Sofa silueta -->
-      <rect x="240" y="310" width="220" height="60" rx="8" fill="#142b1e" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
-      <rect x="244" y="300" width="212" height="20" rx="6" fill="#1a3825" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-      <!-- Mesa -->
-      <ellipse cx="480" cy="360" rx="60" ry="25" fill="#0e2218" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-      <!-- Grid floor -->
-      <line x1="300" y1="300" x2="140" y2="500" stroke="rgba(45,146,104,0.12)" stroke-width="0.8"/>
-      <line x1="400" y1="300" x2="400" y2="500" stroke="rgba(45,146,104,0.12)" stroke-width="0.8"/>
-      <line x1="500" y1="300" x2="660" y2="500" stroke="rgba(45,146,104,0.12)" stroke-width="0.8"/>
-      <line x1="200" y1="360" x2="600" y2="360" stroke="rgba(45,146,104,0.1)" stroke-width="0.8"/>
-      <line x1="180" y1="420" x2="620" y2="420" stroke="rgba(45,146,104,0.1)" stroke-width="0.8"/>
-    </svg>
-    <!-- Hotspots -->
-    <div class="hotspot-layer" id="hs-layer">
-      <div class="hs" style="left:62%;top:72%" onclick="goToScene(1)">
-        <div class="hs-ring"></div>
-        <div class="hs-label">→ Cocina</div>
-      </div>
-      <div class="hs" style="left:28%;top:65%" onclick="goToScene(2)">
-        <div class="hs-ring"></div>
-        <div class="hs-label">→ Recámara</div>
-      </div>
-      <div class="hs" style="left:48%;top:40%" onclick="goToScene(3)">
-        <div class="hs-ring"></div>
-        <div class="hs-label">→ Terraza</div>
-      </div>
-    </div>
-    <!-- Nav arrows -->
+    <div class="foto-counter" id="foto-counter">1 / 1</div>
     <div class="gallery-arrow left" onclick="prevScene()">‹</div>
     <div class="gallery-arrow right" onclick="nextScene()">›</div>
   </div>
-
 </div>
-
-<!-- MODE BADGE for 360/pano (inside viewer, rendered by JS) -->
 
 <!-- SCENE STRIP -->
-<div class="scene-strip" id="scene-strip">
-  <!-- Generado por JS -->
-</div>
+<div class="scene-strip" id="scene-strip" style="display:none"></div>
 
 <!-- SHARE MODAL -->
-<div class="modal-overlay" id="share-modal" onclick="e => { if(e.target===this) closeShare(); }">
+<div class="modal-overlay" id="share-modal" onclick="if(event.target===this)closeShare()">
   <div class="modal">
     <h3>Compartir este tour</h3>
     <p style="font-size:0.82rem;color:rgba(255,255,255,0.45);margin-bottom:0.75rem">Cualquier persona con este link puede recorrer la propiedad</p>
-    <div class="modal-url" onclick="copyLink()">
-      <div><span>3dhome.mx/v/</span>casa-lomas-a9x2k</div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7ae8b0" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-    </div>
+    <div class="modal-url" onclick="copyLink()" id="modal-url-display">Cargando link...</div>
     <div class="share-grid">
       <div class="share-item" onclick="shareWA()"><span class="ico">💬</span><span>WhatsApp</span></div>
       <div class="share-item" onclick="shareFB()"><span class="ico">📘</span><span>Facebook</span></div>
@@ -437,209 +290,227 @@ html, body { height: 100%; font-family: var(--sans); background: var(--dark); co
       <div class="share-item" onclick="shareEmail()"><span class="ico">✉️</span><span>Email</span></div>
       <div class="share-item" onclick="copyEmbed()"><span class="ico">🖥️</span><span>Embed</span></div>
     </div>
-    <div class="embed-box" onclick="copyEmbed()" title="Clic para copiar">
-      &lt;iframe src="https://3dhome.mx/v/casa-lomas-a9x2k" width="100%" height="500" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;
-    </div>
+    <div class="embed-box" onclick="copyEmbed()" id="embed-box-display"></div>
     <button class="modal-close" onclick="closeShare()">Cerrar</button>
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ── DATOS DE ESCENAS ──
-const TOUR_URL = 'https://3dhome.mx/v/casa-lomas-a9x2k';
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SUPABASE CONFIG
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const SUPA_URL  = 'https://gkgpopfjcrloiznhxruc.supabase.co';
+const SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZ3BvcGZqY3Jsb2l6bmh4cnVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTg4NjEsImV4cCI6MjA5NDg3NDg2MX0.3SqTuFmPuBwu_JFcAC8KbfDiPhjCKBCjolNcS-oSvI0';
+const db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-const scenes = [
-  { id: 0, name: 'Sala principal',    sub: 'Planta baja',   type: 'scene',   color: '#0f2820' },
-  { id: 1, name: 'Cocina',            sub: 'Área de comedor', type: 'scene', color: '#0d2318' },
-  { id: 2, name: 'Recámara principal',sub: 'Piso 2',         type: 'scene',  color: '#0a1a12' },
-  { id: 3, name: 'Terraza',           sub: 'Piso 3',         type: 'scene',  color: '#060e09' },
-  { id: 4, name: 'Baño principal',    sub: 'Piso 2',         type: 'scene',  color: '#0c1e14' },
-];
-
-// SVG siluetas por escena (colores diferentes para diferenciarlas)
-const sceneColors = ['#0f2820','#0d2318','#0a1a12','#060e09','#0c1e14'];
-
-let currentScene = 0;
-let currentMode = '360';
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ESTADO
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let tourData   = null;
+let fotos      = [];
+let currentIdx = 0;
 let pannellumViewer = null;
+let tourURL    = '';
 
-// ── THUMBNAILS ──
-function buildStrip() {
-  const strip = document.getElementById('scene-strip');
-  strip.innerHTML = '<span class="scene-count">' + scenes.length + ' espacios</span>';
-  scenes.forEach((s, i) => {
-    const th = document.createElement('div');
-    th.className = 'scene-thumb' + (i===0?' active':'');
-    th.id = 'thumb-' + i;
-    th.innerHTML = `
-      <svg viewBox="0 0 100 66" style="background:${sceneColors[i]}">
-        <polygon points="0,66 100,66 80,38 20,38" fill="${sceneColors[i]}" opacity="0.9"/>
-        <rect x="20" y="8" width="60" height="30" fill="${sceneColors[i]}" opacity="0.7"/>
-        <polygon points="0,66 20,38 20,8 0,14" fill="${sceneColors[i]}" opacity="0.6"/>
-        <polygon points="100,66 80,38 80,8 100,14" fill="${sceneColors[i]}" opacity="0.6"/>
-        <rect x="35" y="12" width="30" height="20" rx="1" fill="rgba(45,146,104,0.15)" stroke="rgba(45,146,104,0.3)" stroke-width="0.5"/>
-        <circle cx="50" cy="50" r="4" fill="rgba(122,232,176,0.6)"/>
-      </svg>
-      <div class="scene-label">${s.name}</div>`;
-    th.onclick = () => goToScene(i);
-    strip.appendChild(th);
-  });
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LEER SLUG DE LA URL
+// Soporta:
+//   /3dhome-visor.html?slug=casa-abc
+//   /v/casa-abc  (cuando esté configurado vercel.json)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function getSlug() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('slug')) return params.get('slug');
+  // /v/slug format
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const vIdx = parts.indexOf('v');
+  if (vIdx !== -1 && parts[vIdx+1]) return parts[vIdx+1];
+  return null;
 }
 
-// ── NAVIGATION ──
-function goToScene(idx) {
-  currentScene = idx;
-  // Update strip
-  document.querySelectorAll('.scene-thumb').forEach((t,i) => t.classList.toggle('active', i===idx));
-  document.getElementById('thumb-'+idx)?.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
-  // Update room label
-  const s = scenes[idx];
-  const rn = document.getElementById('gallery-room-name');
-  const rs = document.getElementById('gallery-room-sub');
-  if (rn) rn.textContent = s.name;
-  if (rs) rs.textContent = s.sub;
-  // In 360/pano mode: update pannellum (demo: just change yaw)
-  if (pannellumViewer && (currentMode==='360'||currentMode==='pano')) {
-    const yaws = [0, 90, 180, 270, 45];
-    pannellumViewer.setYaw(yaws[idx] || 0, true);
-    pannellumViewer.setPitch(0, true);
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CARGAR TOUR DESDE SUPABASE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadTour() {
+  const slug = getSlug();
+
+  if (!slug) {
+    showError('No se especificó ningún tour en la URL.', 'Agrega ?slug=TU-SLUG a la URL para ver un tour.');
+    return;
   }
+
+  setLoadingLabel('Buscando propiedad...');
+
+  // 1. Buscar el tour por slug
+  const { data: tour, error: tourErr } = await db
+    .from('tours')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  if (tourErr || !tour) {
+    showError('Tour no encontrado', `No existe un tour con el link "${slug}". Verifica que el link sea correcto.`);
+    return;
+  }
+
+  tourData = tour;
+  tourURL  = window.location.href;
+
+  // 2. Actualizar meta tags OG dinámicamente
+  document.title = `${tour.nombre} — Tour Virtual 3DHome`;
+  setMeta('og:title', tour.nombre + ' — Tour Virtual 3D');
+  setMeta('og:description', [tour.tipo, tour.ciudad, tour.descripcion].filter(Boolean).join(' · '));
+  setMeta('og:url', tourURL);
+
+  // 3. Actualizar topbar
+  document.getElementById('tour-nombre').textContent = tour.nombre;
+  document.getElementById('tour-meta').textContent = [tour.tipo, tour.ciudad].filter(Boolean).join(' · ');
+
+  // 4. Actualizar modal de compartir
+  document.getElementById('modal-url-display').textContent = tourURL;
+  document.getElementById('embed-box-display').textContent =
+    `<iframe src="${tourURL}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`;
+
+  setLoadingLabel('Cargando fotos...');
+
+  // 5. Cargar fotos del tour
+  const { data: fotosData, error: fotosErr } = await db
+    .from('tour_fotos')
+    .select('*')
+    .eq('tour_id', tour.id)
+    .order('orden', { ascending: true });
+
+  if (fotosErr || !fotosData || fotosData.length === 0) {
+    showError('Sin fotos', 'Este tour aún no tiene fotos procesadas. Intenta más tarde.');
+    return;
+  }
+
+  fotos = fotosData;
+  setLoadingLabel('Construyendo visor...');
+
+  // 6. Mostrar UI
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('topbar').style.display = 'flex';
+  document.getElementById('viewer-wrap').style.display = 'block';
+  document.getElementById('scene-strip').style.display = 'flex';
+
+  // 7. Construir strip de escenas
+  buildStrip();
+
+  // 8. Iniciar visor según el modo del tour
+  initViewer(tour.modo);
 }
-function prevScene() { goToScene((currentScene - 1 + scenes.length) % scenes.length); }
-function nextScene() { goToScene((currentScene + 1) % scenes.length); }
 
-// ── MODE SWITCHING ──
-function setMode(mode) {
-  currentMode = mode;
-  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
-  const tabs = document.querySelectorAll('.mode-tab');
-  const modeMap = {'gallery':0,'pano':1,'360':2};
-  tabs[modeMap[mode]]?.classList.add('active');
-
-  const pannEl = document.getElementById('pannellum-container');
-  const gallEl = document.getElementById('gallery-container');
-
-  if (mode === 'gallery') {
-    pannEl.classList.remove('active');
-    gallEl.classList.add('active');
-    if (pannellumViewer) { try{ pannellumViewer.destroy(); }catch(e){} pannellumViewer=null; }
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INICIAR VISOR SEGÚN MODO
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function initViewer(modo) {
+  if (modo === '360' || modo === 'pano') {
+    initPannellum(modo);
   } else {
-    pannEl.classList.add('active');
-    gallEl.classList.remove('active');
-    initPannellum(mode);
+    initGallery();
   }
 }
 
-// ── PANNELLUM INIT ──
-function initPannellum(mode) {
+// Pannellum para 360° y panorámicas
+function initPannellum(modo) {
+  document.getElementById('pannellum-container').classList.add('active');
+  document.getElementById('gallery-container').classList.remove('active');
+
   if (pannellumViewer) { try{ pannellumViewer.destroy(); }catch(e){} pannellumViewer=null; }
-  const container = document.getElementById('pannellum-container');
-  container.innerHTML = '';
 
-  const hfov = mode === 'pano' ? 100 : 120;
-  const pitch = mode === 'pano' ? 0 : 0;
-
-  // Demo image: we use a solid-color placeholder since we're in demo mode
-  // In production this would be the actual equirectangular URL from storage
-  // For demo we generate a canvas-based placeholder
-  const canvas = document.createElement('canvas');
-  canvas.width = 4096; canvas.height = 2048;
-  const ctx = canvas.getContext('2d');
-
-  // Gradient sky/floor
-  const skyGrad = ctx.createLinearGradient(0,0,0,2048);
-  skyGrad.addColorStop(0,'#040d07');
-  skyGrad.addColorStop(0.45,'#0a1f14');
-  skyGrad.addColorStop(0.55,'#0f2820');
-  skyGrad.addColorStop(1,'#060e09');
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0,0,4096,2048);
-
-  // Grid lines (simulate floor/ceiling)
-  ctx.strokeStyle = 'rgba(45,146,104,0.15)';
-  ctx.lineWidth = 1.5;
-  for (let x=0;x<4096;x+=256) { ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,2048);ctx.stroke(); }
-  for (let y=0;y<2048;y+=256) { ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(4096,y);ctx.stroke(); }
-
-  // Windows suggestion
-  for (let wx=600;wx<4096;wx+=900) {
-    ctx.fillStyle='rgba(45,146,104,0.12)';
-    ctx.strokeStyle='rgba(45,146,104,0.3)';
-    ctx.lineWidth=2;
-    ctx.beginPath();ctx.roundRect(wx,700,280,500,6);ctx.fill();ctx.stroke();
-  }
-
-  // "Room" horizon line
-  ctx.strokeStyle='rgba(45,146,104,0.25)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(0,1024);ctx.lineTo(4096,1024);ctx.stroke();
-
-  // Hotspot dots on canvas
-  ctx.fillStyle='rgba(122,232,176,0.6)';
-  [[512,1100],[1536,980],[2560,1050],[3400,1020]].forEach(([x,y])=>{
-    ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='rgba(122,232,176,0.4)';ctx.lineWidth=3;
-    ctx.beginPath();ctx.arc(x,y,30,0,Math.PI*2);ctx.stroke();
-  });
-
-  // Mode text watermark
-  ctx.fillStyle='rgba(255,255,255,0.06)';
-  ctx.font='bold 120px sans-serif';ctx.textAlign='center';
-  const modeText = mode==='360'?'VISTA 360°':'PANORÁMICA';
-  ctx.fillText(modeText, 2048, 1200);
-
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
+  const foto = fotos[currentIdx];
   const cfg = {
-    type: mode === 'pano' ? 'multires' : 'equirectangular',
-    panorama: dataUrl,
+    type: 'equirectangular',
+    panorama: foto.url_publica,
     autoLoad: true,
     showControls: false,
-    hfov: hfov,
+    hfov: modo === 'pano' ? 110 : 120,
     minHfov: 50,
-    maxHfov: 120,
+    maxHfov: 130,
     compass: false,
-    hotSpots: [
-      { pitch:2, yaw:30,  type:'info', text:'Cocina', clickHandlerFunc: ()=>goToScene(1) },
-      { pitch:2, yaw:150, type:'info', text:'Recámara', clickHandlerFunc: ()=>goToScene(2) },
-      { pitch:2, yaw:250, type:'info', text:'Terraza', clickHandlerFunc: ()=>goToScene(3) },
-    ],
-    hotSpotDebug: false,
   };
 
-  // Panoramic: limit vertical range
-  if (mode === 'pano') {
-    cfg.type = 'equirectangular';
-    cfg.maxPitch = 25;
-    cfg.minPitch = -25;
-    cfg.maxHfov = 130;
+  if (modo === 'pano') {
+    cfg.maxPitch = 30;
+    cfg.minPitch = -30;
   }
 
   try {
     pannellumViewer = pannellum.viewer('pannellum-container', cfg);
   } catch(e) {
-    console.warn('Pannellum fallback:', e);
+    // Pannellum falló — fallback a galería
+    console.warn('Pannellum fallback a galería:', e);
+    initGallery();
   }
-
-  // Mode badge
-  let badge = document.querySelector('.mode-badge:not(#mode-badge-gallery)');
-  if (!badge) {
-    badge = document.createElement('div');
-    badge.className = 'mode-badge';
-    document.querySelector('.viewer-wrap').appendChild(badge);
-  }
-  const labels = { '360':'Vista 360° — Arrastra para explorar', 'pano':'Foto panorámica — Arrastra para explorar' };
-  badge.innerHTML = `<span class="mode-dot"></span> ${labels[mode]}`;
 }
 
-// ── SHARE ──
-function openShare() { document.getElementById('share-modal').classList.add('open'); }
-function closeShare() { document.getElementById('share-modal').classList.remove('open'); }
-document.getElementById('share-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeShare();
+// Galería para fotos normales
+function initGallery() {
+  document.getElementById('pannellum-container').classList.remove('active');
+  document.getElementById('gallery-container').classList.add('active');
+  if (pannellumViewer) { try{ pannellumViewer.destroy(); }catch(e){} pannellumViewer=null; }
+  renderGalleryPhoto();
+}
+
+function renderGalleryPhoto() {
+  const img = document.getElementById('gallery-img');
+  img.style.opacity = '0';
+  img.src = fotos[currentIdx].url_publica;
+  img.onload = () => { img.style.opacity = '1'; };
+  document.getElementById('gallery-room-name').textContent = `Foto ${currentIdx + 1}`;
+  document.getElementById('gallery-room-sub').textContent = tourData.nombre;
+  document.getElementById('foto-counter').textContent = `${currentIdx+1} / ${fotos.length}`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STRIP DE ESCENAS (thumbnails reales)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildStrip() {
+  const strip = document.getElementById('scene-strip');
+  strip.innerHTML = `<span class="scene-count">${fotos.length} foto${fotos.length!==1?'s':''}</span>`;
+  fotos.forEach((f, i) => {
+    const th = document.createElement('div');
+    th.className = 'scene-thumb' + (i===0?' active':'');
+    th.id = 'thumb-' + i;
+    th.innerHTML = `
+      <img src="${f.url_publica}" alt="Foto ${i+1}" loading="lazy"/>
+      <div class="scene-label">Foto ${i+1}</div>`;
+    th.onclick = () => goToScene(i);
+    strip.appendChild(th);
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NAVEGACIÓN
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function goToScene(idx) {
+  currentIdx = idx;
+  document.querySelectorAll('.scene-thumb').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.getElementById('thumb-'+idx)?.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+
+  if (tourData.modo === '360' || tourData.modo === 'pano') {
+    initPannellum(tourData.modo);
+  } else {
+    renderGalleryPhoto();
+  }
+}
+function prevScene() { goToScene((currentIdx - 1 + fotos.length) % fotos.length); }
+function nextScene() { goToScene((currentIdx + 1) % fotos.length); }
+
+// Teclas de teclado
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  prevScene();
+  if (e.key === 'ArrowRight') nextScene();
 });
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SHARE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function openShare()  { document.getElementById('share-modal').classList.add('open'); }
+function closeShare() { document.getElementById('share-modal').classList.remove('open'); }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -647,31 +518,41 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 function copyLink() {
-  if (navigator.clipboard) navigator.clipboard.writeText(TOUR_URL);
+  if (navigator.clipboard) navigator.clipboard.writeText(tourURL);
   showToast('✓ Link copiado al portapapeles');
 }
 function copyEmbed() {
-  const code = `<iframe src="${TOUR_URL}" width="100%" height="500" frameborder="0" allowfullscreen></iframe>`;
+  const code = `<iframe src="${tourURL}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`;
   if (navigator.clipboard) navigator.clipboard.writeText(code);
   showToast('✓ Código embed copiado');
 }
-function shareWA() {
-  window.open(`https://wa.me/?text=${encodeURIComponent('Recorre esta propiedad en 3D 🏠 → '+TOUR_URL)}`, '_blank');
-  closeShare();
+function shareWA()    { window.open(`https://wa.me/?text=${encodeURIComponent('Recorre esta propiedad en 3D 🏠 → '+tourURL)}`, '_blank'); closeShare(); }
+function shareFB()    { window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(tourURL)}`, '_blank'); closeShare(); }
+function shareIG()    { copyLink(); showToast('✓ Link copiado — pégalo en Instagram'); closeShare(); }
+function shareEmail() { window.open(`mailto:?subject=Tour virtual&body=Recorre la propiedad: ${tourURL}`, '_blank'); closeShare(); }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HELPERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function setLoadingLabel(txt) {
+  document.getElementById('loading-label').textContent = txt;
 }
-function shareFB() {
-  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(TOUR_URL)}`, '_blank');
-  closeShare();
+function showError(title, msg) {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('error-screen').style.display  = 'flex';
+  document.querySelector('#error-screen h2').textContent  = title;
+  document.getElementById('error-msg').textContent = msg;
 }
-function shareIG() { copyLink(); showToast('✓ Link copiado — pégalo en Instagram'); closeShare(); }
-function shareEmail() {
-  window.open(`mailto:?subject=Tour virtual — Casa Lomas&body=Recorre la propiedad en 3D desde tu celular: ${TOUR_URL}`, '_blank');
-  closeShare();
+function setMeta(prop, content) {
+  let el = document.querySelector(`meta[property="${prop}"]`);
+  if (!el) { el = document.createElement('meta'); el.setAttribute('property', prop); document.head.appendChild(el); }
+  el.setAttribute('content', content);
 }
 
-// ── INIT ──
-buildStrip();
-setMode('360');
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ARRANQUE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+loadTour();
 </script>
 </body>
 </html>
