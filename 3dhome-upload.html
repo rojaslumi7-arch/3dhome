@@ -447,7 +447,7 @@ nav {
 const SUPA_URL = 'https://gkgpopfjcrloiznhxruc.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZ3BvcGZqY3Jsb2l6bmh4cnVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTg4NjEsImV4cCI6MjA5NDg3NDg2MX0.3SqTuFmPuBwu_JFcAC8KbfDiPhjCKBCjolNcS-oSvI0';
 const BUCKET  = 'tour-photos';
-const TOUR_DOMAIN = '3dhome.mx';
+const TOUR_DOMAIN = window.location.host; // usa el dominio actual (Vercel o futuro 3dhome.mx)
 
 const db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
@@ -692,10 +692,11 @@ async function startUpload() {
 
     // 5. Mostrar resultado
     setTimeout(() => {
-      const url = `https://${TOUR_DOMAIN}/v/${tourSlug}`;
+      const tourFullURL = `${window.location.origin}/3dhome-visor.html?slug=${tourSlug}&preview=1`;
       document.getElementById('tour-slug-display').textContent = tourSlug;
-      document.getElementById('wa-btn').href = `https://wa.me/?text=${encodeURIComponent('Recorre esta propiedad en 3D 🏠 → '+url)}`;
-      document.getElementById('fb-btn').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+      document.getElementById('result-link-box').onclick = () => copyTourLink(tourFullURL);
+      document.getElementById('wa-btn').href = `https://wa.me/?text=${encodeURIComponent('Recorre esta propiedad en 3D 🏠 → '+tourFullURL)}`;
+      document.getElementById('fb-btn').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(tourFullURL)}`;
       document.getElementById('proc-view').style.display='none';
       document.getElementById('done-view').style.display='block';
     }, 500);
@@ -708,12 +709,19 @@ async function startUpload() {
   }
 }
 
-function copyLink() {
-  const url = `https://${TOUR_DOMAIN}/v/${tourSlug}`;
+function copyTourLink(url) {
   if (navigator.clipboard) navigator.clipboard.writeText(url);
   const box = document.getElementById('result-link-box');
   box.style.background = '#c2e8d5';
   setTimeout(() => box.style.background = '', 1200);
+  showToastUpload('✓ Link copiado');
+}
+function showToastUpload(msg) {
+  // Simple inline feedback
+  const box = document.getElementById('result-link-box');
+  const orig = box.style.background;
+  box.style.background = '#c2e8d5';
+  setTimeout(() => box.style.background = orig, 1200);
 }
 </script>
 </body>
