@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>3DHome — Subir fotos de tu propiedad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ink: #0b0f0d; --ink2: #3a3d3b; --ink3: #7a7d7b;
+  --cream: #f5f2ec; --cream2: #ede9e1; --cream3: #e5e0d7;
+  --accent: #1a6b4a; --accent2: #2d9268; --accent-pale: #e8f4ee; --accent-mid: #c2e8d5;
+  --gold: #c8973a; --gold-pale: #faf3e4;
+  --warn: #c85a1a; --warn-pale: #fdf0e8;
+  --white: #ffffff;
+  --serif: 'DM Serif Display', Georgia, serif;
+  --sans: 'DM Sans', system-ui, sans-serif;
+  --r: 10px; --r-lg: 16px; --r-xl: 22px;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans); background: var(--cream);
+  color: var(--ink); min-height: 100vh;
+}
+
+/* ── NAV ── */
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 5vw; height: 60px;
+  background: rgba(245,242,236,0.92); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--cream2);
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-logo { font-family: var(--serif); font-size: 1.3rem; }
+.nav-logo span { color: var(--accent); }
+.nav-steps { display: flex; align-items: center; gap: 6px; }
+.step-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.75rem; color: var(--ink3); padding: 4px 12px;
+  border-radius: 100px;
+}
+.step-pill.active { background: var(--accent); color: white; font-weight: 500; }
+.step-pill.done { background: var(--accent-pale); color: var(--accent); }
+.step-sep { color: var(--cream3); font-size: 0.8rem; }
+
+/* ── LAYOUT ── */
+.page { max-width: 860px; margin: 0 auto; padding: 2.5rem 5vw 4rem; }
+
+.page-header { margin-bottom: 2rem; }
+.page-header h1 { font-family: var(--serif); font-size: 2rem; letter-spacing: -0.02em; margin-bottom: 0.4rem; }
+.page-header p { font-size: 0.95rem; color: var(--ink2); font-weight: 300; }
+
+/* ── QUALITY BANNER ── */
+.quality-banner {
+  background: var(--gold-pale);
+  border: 1.5px solid #e8c87a;
+  border-radius: var(--r-lg);
+  padding: 1.125rem 1.375rem;
+  display: flex; gap: 14px; align-items: flex-start;
+  margin-bottom: 1.5rem;
+  animation: fadeUp .5s ease both;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+.banner-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 1px; }
+.banner-text strong {
+  display: block; font-size: 0.92rem; font-weight: 500;
+  color: #7a4f0a; margin-bottom: 3px;
+}
+.banner-text p { font-size: 0.84rem; color: #9a6b1a; font-weight: 300; line-height: 1.5; }
+.banner-cta {
+  margin-left: auto; flex-shrink: 0;
+  background: var(--gold); color: white;
+  border: none; border-radius: 100px;
+  padding: 7px 16px; font-size: 0.78rem; font-weight: 500;
+  font-family: var(--sans); cursor: pointer;
+  transition: background .2s; white-space: nowrap;
+  align-self: center;
+}
+.banner-cta:hover { background: #a87a28; }
+
+/* ── TYPE SELECTOR ── */
+.type-section { margin-bottom: 1.75rem; }
+.type-section-label {
+  font-size: 0.72rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink3); margin-bottom: 0.75rem;
+}
+.type-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.type-card {
+  background: var(--white);
+  border: 2px solid var(--cream2);
+  border-radius: var(--r-lg);
+  padding: 1.125rem 1rem;
+  cursor: pointer;
+  transition: border-color .2s, background .15s, transform .15s;
+  position: relative;
+  text-align: center;
+}
+.type-card:hover { border-color: var(--accent-mid); background: var(--accent-pale); transform: translateY(-2px); }
+.type-card.selected { border-color: var(--accent); background: var(--accent-pale); }
+.type-card.recommended { border-color: var(--gold); }
+.type-card.recommended.selected { border-color: var(--accent); }
+.rec-badge {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  background: var(--gold); color: white;
+  font-size: 0.65rem; font-weight: 500; letter-spacing: 0.05em;
+  border-radius: 100px; padding: 3px 10px; white-space: nowrap;
+}
+.type-icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
+.type-name { font-size: 0.88rem; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
+.type-desc { font-size: 0.75rem; color: var(--ink3); line-height: 1.4; }
+.type-quality {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px; font-size: 0.7rem; border-radius: 100px;
+  padding: 2px 9px; font-weight: 500;
+}
+.q-best { background: var(--accent-pale); color: var(--accent); }
+.q-good { background: #eef4ff; color: #2563a8; }
+.q-basic { background: var(--cream); color: var(--ink3); }
+.check-indicator {
+  position: absolute; top: 10px; right: 10px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); display: none;
+  align-items: center; justify-content: center;
+  font-size: 0.7rem; color: white;
+}
+.type-card.selected .check-indicator { display: flex; }
+
+/* ── TOOLS PANEL (360 tips) ── */
+.tools-panel {
+  background: var(--white);
+  border: 1.5px solid var(--cream2);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: 1.75rem;
+  animation: fadeUp .4s ease both;
+}
+.tools-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  background: var(--cream); border-bottom: 1px solid var(--cream2);
+  cursor: pointer; user-select: none;
+}
+.tools-header h3 { font-size: 0.88rem; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.tools-header span { font-size: 0.78rem; color: var(--ink3); }
+.tools-body { padding: 1.25rem; }
+.tools-tabs { display: flex; gap: 6px; margin-bottom: 1.125rem; }
+.ttab {
+  padding: 5px 14px; border-radius: 100px; font-size: 0.78rem;
+  cursor: pointer; border: 1.5px solid var(--cream2);
+  background: transparent; color: var(--ink2);
+  font-family: var(--sans); transition: all .15s;
+}
+.ttab.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+.tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 10px; }
+.tool-card {
+  border: 1px solid var(--cream2); border-radius: var(--r);
+  padding: 0.875rem 1rem; background: var(--cream);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.tool-top { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.tool-emoji { font-size: 1.5rem; }
+.tool-name { font-size: 0.88rem; font-weight: 500; }
+.tool-platform {
+  font-size: 0.68rem; color: var(--ink3);
+  background: var(--cream2); border-radius: 100px;
+  padding: 1px 8px; display: inline-block; margin-bottom: 2px;
+}
+.tool-desc { font-size: 0.78rem; color: var(--ink2); line-height: 1.45; }
+.tool-free {
+  font-size: 0.7rem; font-weight: 500; color: var(--accent);
+  background: var(--accent-pale); border-radius: 100px;
+  padding: 2px 8px; display: inline-block; margin-top: 4px; align-self: flex-start;
+}
+.tool-paid {
+  font-size: 0.7rem; font-weight: 500; color: #7a4f0a;
+  background: var(--gold-pale); border-radius: 100px;
+  padding: 2px 8px; display: inline-block; margin-top: 4px; align-self: flex-start;
+}
+
+/* How-to steps */
+.howto { display: flex; flex-direction: column; gap: 10px; }
+.howto-step { display: flex; gap: 12px; align-items: flex-start; }
+.howto-num {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  background: var(--ink); color: white;
+  font-size: 0.72rem; font-weight: 500;
+  display: flex; align-items: center; justify-content: center;
+}
+.howto-step h4 { font-size: 0.85rem; font-weight: 500; margin-bottom: 2px; }
+.howto-step p { font-size: 0.78rem; color: var(--ink2); line-height: 1.45; }
+
+/* Pano-to-360 note */
+.convert-note {
+  background: #eef4ff; border: 1px solid #c0d4f5;
+  border-radius: var(--r); padding: 0.875rem 1rem;
+  font-size: 0.82rem; color: #1a3a7a; line-height: 1.5;
+  margin-top: 0.5rem;
+}
+.convert-note strong { display: block; margin-bottom: 3px; }
+
+/* ── UPLOAD ZONE ── */
+.upload-zone {
+  border: 2px dashed var(--cream3);
+  border-radius: var(--r-xl);
+  background: var(--white);
+  padding: 2.5rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--accent); background: var(--accent-pale);
+}
+.upload-zone input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+.upload-icon {
+  width: 56px; height: 56px; border-radius: 16px;
+  background: var(--accent-pale); border: 1.5px solid var(--accent-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; margin: 0 auto 1rem;
+}
+.upload-zone h3 { font-size: 1rem; font-weight: 500; margin-bottom: 0.375rem; }
+.upload-zone p { font-size: 0.85rem; color: var(--ink3); font-weight: 300; }
+.upload-formats {
+  display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 1rem;
+}
+.fmt-pill {
+  font-size: 0.7rem; background: var(--cream); border: 1px solid var(--cream3);
+  border-radius: 100px; padding: 3px 10px; color: var(--ink3);
+}
+
+/* ── FILE LIST ── */
+.file-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.25rem; }
+.file-item {
+  background: var(--white); border: 1px solid var(--cream2);
+  border-radius: var(--r); padding: 10px 14px;
+  display: flex; align-items: center; gap: 12px;
+  animation: fadeUp .25s ease both;
+}
+.file-thumb {
+  width: 48px; height: 36px; border-radius: 6px;
+  background: var(--cream2); overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; color: var(--ink3);
+}
+.file-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.file-info { flex: 1; min-width: 0; }
+.file-name { font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { font-size: 0.75rem; color: var(--ink3); margin-top: 1px; }
+.file-type-badge {
+  font-size: 0.68rem; border-radius: 100px; padding: 2px 9px; font-weight: 500; flex-shrink: 0;
+}
+.badge-360 { background: var(--accent-pale); color: var(--accent); }
+.badge-pano { background: #eef4ff; color: #2563a8; }
+.badge-normal { background: var(--cream); color: var(--ink3); }
+.file-remove {
+  width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: var(--cream2); color: var(--ink3);
+  font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .15s;
+}
+.file-remove:hover { background: #fde8e8; color: #c0392b; }
+
+/* Summary bar */
+.summary-bar {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+.sum-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--white); border: 1px solid var(--cream2);
+  border-radius: 100px; padding: 5px 13px; font-size: 0.78rem; color: var(--ink2);
+}
+.sum-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* ── PROPERTY DETAILS ── */
+.details-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 1.75rem;
+}
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 0.78rem; font-weight: 500; color: var(--ink2); }
+.field input, .field select, .field textarea {
+  font-family: var(--sans); font-size: 0.9rem;
+  background: var(--white); border: 1.5px solid var(--cream2);
+  border-radius: var(--r); padding: 9px 13px;
+  color: var(--ink); outline: none;
+  transition: border-color .2s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent);
+}
+.field.full { grid-column: 1/-1; }
+.field textarea { resize: vertical; min-height: 72px; }
+
+/* ── SUBMIT ── */
+.submit-section { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+.submit-btn {
+  width: 100%; padding: 15px;
+  background: var(--accent); color: white;
+  border: none; border-radius: 100px;
+  font-family: var(--sans); font-size: 1rem; font-weight: 500;
+  cursor: pointer; transition: background .2s, transform .15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.submit-btn:hover { background: #155a3e; transform: translateY(-1px); }
+.submit-btn:disabled { background: var(--cream3); color: var(--ink3); cursor: not-allowed; transform: none; }
+.submit-note {
+  text-align: center; font-size: 0.78rem; color: var(--ink3); line-height: 1.5;
+}
+
+/* ── PROGRESS MODAL ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(11,15,13,0.5); backdrop-filter: blur(6px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--white); border-radius: var(--r-xl);
+  padding: 2.25rem 2rem; max-width: 400px; width: 90%;
+  text-align: center; animation: popIn .3s ease;
+}
+@keyframes popIn { from{opacity:0;transform:scale(.94)} to{opacity:1;transform:scale(1)} }
+.modal h3 { font-family: var(--serif); font-size: 1.5rem; margin-bottom: 0.375rem; }
+.modal p { font-size: 0.88rem; color: var(--ink2); margin-bottom: 1.5rem; font-weight: 300; }
+.progress-track { height: 6px; background: var(--cream2); border-radius: 3px; overflow: hidden; margin-bottom: 0.75rem; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .5s ease; }
+.progress-label { font-size: 0.8rem; color: var(--ink3); margin-bottom: 1.5rem; }
+
+.result-link {
+  background: var(--accent-pale); border: 1.5px solid var(--accent-mid);
+  border-radius: var(--r); padding: 12px 16px;
+  font-family: monospace; font-size: 0.88rem; color: var(--accent);
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; margin-bottom: 1rem;
+  transition: background .2s;
+}
+.result-link:hover { background: #d0ead9; }
+.share-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.share-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--cream); border: 1px solid var(--cream2);
+  border-radius: 100px; padding: 6px 14px; font-size: 0.8rem;
+  cursor: pointer; font-family: var(--sans); transition: background .2s;
+}
+.share-chip:hover { background: var(--cream2); }
+
+/* Accordion arrow */
+.accordion-arrow { transition: transform .25s; }
+.tools-panel.closed .accordion-arrow { transform: rotate(-90deg); }
+.tools-body-wrap { overflow: hidden; transition: max-height .35s ease; max-height: 1000px; }
+.tools-panel.closed .tools-body-wrap { max-height: 0; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .type-grid { grid-template-columns: 1fr; }
+  .details-grid { grid-template-columns: 1fr; }
+  .nav-steps { display: none; }
+  .tools-grid { grid-template-columns: 1fr; }
+  .banner-cta { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">3D<span>Home</span></div>
+  <div class="nav-steps">
+    <div class="step-pill done">✓ Cuenta</div>
+    <div class="step-sep">›</div>
+    <div class="step-pill active">📷 Fotos</div>
+    <div class="step-sep">›</div>
+    <div class="step-pill">⚙️ Procesar</div>
+    <div class="step-sep">›</div>
+    <div class="step-pill">🔗 Tu link</div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <div class="page-header">
+    <h1>Sube las fotos de tu propiedad</h1>
+    <p>Acepta fotos normales, panorámicas y 360°. Cuanto mejor la foto, más inmersivo el tour.</p>
+  </div>
+
+  <!-- QUALITY BANNER -->
+  <div class="quality-banner">
+    <span class="banner-icon">⭐</span>
+    <div class="banner-text">
+      <strong>Para la mejor experiencia, te recomendamos fotos 360°</strong>
+      <p>Las fotos 360° crean un tour totalmente inmersivo donde tu cliente puede mirar en todas direcciones. También aceptamos fotos normales y panorámicas — el sistema se adapta automáticamente.</p>
+    </div>
+    <button class="banner-cta" onclick="openTools('apps')">Ver cómo tomarlas →</button>
+  </div>
+
+  <!-- TYPE SELECTOR -->
+  <div class="type-section">
+    <div class="type-section-label">¿Qué tipo de fotos vas a subir?</div>
+    <div class="type-grid">
+      <div class="type-card recommended" id="type-360" onclick="selectType('360')">
+        <div class="rec-badge">⭐ Mejor resultado</div>
+        <div class="check-indicator">✓</div>
+        <span class="type-icon">🌐</span>
+        <div class="type-name">Fotos 360°</div>
+        <div class="type-desc">Esféricas equirectangulares — el cliente mira en todas direcciones</div>
+        <div class="type-quality q-best">✦ Experiencia completa</div>
+      </div>
+      <div class="type-card" id="type-pano" onclick="selectType('pano')">
+        <div class="check-indicator">✓</div>
+        <span class="type-icon">🌅</span>
+        <div class="type-name">Panorámicas</div>
+        <div class="type-desc">Modo panorámico de cualquier celular — barrido horizontal amplio</div>
+        <div class="type-quality q-good">✦ Muy buena experiencia</div>
+      </div>
+      <div class="type-card selected" id="type-normal" onclick="selectType('normal')">
+        <div class="check-indicator">✓</div>
+        <span class="type-icon">📷</span>
+        <div class="type-name">Fotos normales</div>
+        <div class="type-desc">Fotos estándar de cualquier cámara o celular — galería navegable</div>
+        <div class="type-quality q-basic">✦ Buena experiencia</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOLS PANEL -->
+  <div class="tools-panel closed" id="tools-panel">
+    <div class="tools-header" onclick="toggleTools()">
+      <h3>
+        <span>💡</span>
+        Cómo tomar fotos 360° — herramientas recomendadas
+      </h3>
+      <span>
+        <svg class="accordion-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+    <div class="tools-body-wrap">
+      <div class="tools-body">
+        <div class="tools-tabs">
+          <button class="ttab active" onclick="showTab('apps')">📱 Apps gratuitas</button>
+          <button class="ttab" onclick="showTab('camaras')">📷 Cámaras 360°</button>
+          <button class="ttab" onclick="showTab('convertir')">🔄 Panorámica → 360°</button>
+          <button class="ttab" onclick="showTab('tips')">✅ Tips para mejores fotos</button>
+        </div>
+
+        <!-- Apps gratuitas -->
+        <div id="tab-apps" class="tab-content">
+          <div class="tools-grid">
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">📍</span>
+                <div>
+                  <div class="tool-name">Google Street View</div>
+                  <div class="tool-platform">iOS · Android</div>
+                </div>
+              </div>
+              <div class="tool-desc">Toma fotos esféricas paso a paso con guía en pantalla. Exporta en formato equirectangular listo para 3DHome.</div>
+              <div class="tool-free">Gratis</div>
+            </div>
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">🖼️</span>
+                <div>
+                  <div class="tool-name">Google Fotos — Photosphere</div>
+                  <div class="tool-platform">Android</div>
+                </div>
+              </div>
+              <div class="tool-desc">En cámara de Google, selecciona "Photo Sphere". Captura guiada punto a punto hasta completar la esfera.</div>
+              <div class="tool-free">Gratis · Incluida en Android</div>
+            </div>
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">🍎</span>
+                <div>
+                  <div class="tool-name">iPhone — Modo panorámico</div>
+                  <div class="tool-platform">iOS</div>
+                </div>
+              </div>
+              <div class="tool-desc">Abre Cámara → desliza a "Pano". Barre lento de izquierda a derecha. Se procesa como panorámica de alta calidad.</div>
+              <div class="tool-free">Gratis · Incluida en iPhone</div>
+            </div>
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">🎡</span>
+                <div>
+                  <div class="tool-name">Ricoh360 Tours</div>
+                  <div class="tool-platform">iOS · Android</div>
+                </div>
+              </div>
+              <div class="tool-desc">App oficial de Ricoh. Crea tours completos con tu celular usando múltiples fotos que une automáticamente en 360°.</div>
+              <div class="tool-free">Gratis</div>
+            </div>
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">🏠</span>
+                <div>
+                  <div class="tool-name">Kuula</div>
+                  <div class="tool-platform">iOS · Android · Web</div>
+                </div>
+              </div>
+              <div class="tool-desc">Plataforma de tours virtuales con app para captura. Importa directamente desde galería o cámara 360°.</div>
+              <div class="tool-free">Gratis con cuenta básica</div>
+            </div>
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">🤖</span>
+                <div>
+                  <div class="tool-name">PTGui (en PC)</div>
+                  <div class="tool-platform">Windows · Mac</div>
+                </div>
+              </div>
+              <div class="tool-desc">Une múltiples fotos normales en una foto 360° equirectangular. Ideal si ya tienes buenas fotos y quieres convertirlas.</div>
+              <div class="tool-paid">De pago · ~$95 USD</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cámaras 360 -->
+        <div id="tab-camaras" class="tab-content" style="display:none">
+          <div class="tools-grid">
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">🔵</span>
+                <div>
+                  <div class="tool-name">Ricoh Theta SC2</div>
+                  <div class="tool-platform">Cámara dedicada</div>
+                </div>
+              </div>
+              <div class="tool-desc">La más recomendada para bienes raíces. Un clic = foto esférica completa. Se conecta al celular por Bluetooth.</div>
+              <div class="tool-paid">~$4,500 MXN</div>
+            </div>
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">🟠</span>
+                <div>
+                  <div class="tool-name">Insta360 X4</div>
+                  <div class="tool-platform">Cámara dedicada</div>
+                </div>
+              </div>
+              <div class="tool-desc">Calidad de imagen superior, ideal para propiedades premium. Video y foto 8K. Muy popular entre agentes inmobiliarios.</div>
+              <div class="tool-paid">~$8,500 MXN</div>
+            </div>
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">⚫</span>
+                <div>
+                  <div class="tool-name">GoPro MAX</div>
+                  <div class="tool-platform">Cámara dedicada</div>
+                </div>
+              </div>
+              <div class="tool-desc">360° resistente a golpes y agua. Buena opción para propiedades con alberca, jardín o exteriores.</div>
+              <div class="tool-paid">~$9,000 MXN</div>
+            </div>
+            <div class="tool-card">
+              <div class="tool-top">
+                <span class="tool-emoji">📎</span>
+                <div>
+                  <div class="tool-name">Lente 360° para celular</div>
+                  <div class="tool-platform">Accesorio universal</div>
+                </div>
+              </div>
+              <div class="tool-desc">Se engancha al celular y convierte la cámara trasera en una 360°. Calidad menor pero solución económica para comenzar.</div>
+              <div class="tool-paid">~$600–1,200 MXN</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Convertir panorámica a 360 -->
+        <div id="tab-convertir" class="tab-content" style="display:none">
+          <div class="convert-note">
+            <strong>¿Ya tienes fotos panorámicas? Se pueden usar directamente.</strong>
+            Las fotos panorámicas de tu iPhone o Android funcionan muy bien en 3DHome sin conversión. Si quieres el efecto 360° completo, aquí te mostramos cómo convertirlas.
+          </div>
+          <div class="howto" style="margin-top:1rem">
+            <div class="howto-step">
+              <div class="howto-num">1</div>
+              <div>
+                <h4>Opción fácil — Subir directo</h4>
+                <p>Sube tu foto panorámica tal cual. 3DHome la detecta automáticamente y la muestra en modo panorámico interactivo. El cliente puede arrastrar de lado a lado para explorar.</p>
+              </div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-num">2</div>
+              <div>
+                <h4>Google Fotos → Photosphere (Android gratis)</h4>
+                <p>Abre Google Fotos, selecciona tu foto panorámica → menú de tres puntos → "Crear" → "Photo Sphere". Google la convierte en esférica automáticamente y la guarda en tu galería.</p>
+              </div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-num">3</div>
+              <div>
+                <h4>Convertidor web — AKVIS Pano2VR o PanoTwist</h4>
+                <p>Sube tu panorámica a pano2vr.com o panotwist.com, descarga en formato equirectangular (2:1). Completamente gratuito, sin instalar nada.</p>
+              </div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-num">4</div>
+              <div>
+                <h4>PTGui en PC (resultado profesional)</h4>
+                <p>Une varias fotos normales tomadas con trípode girando 30° entre cada foto. PTGui las fusiona en una esfera perfecta. Ideal para inmobiliarias con volumen alto.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tips -->
+        <div id="tab-tips" class="tab-content" style="display:none">
+          <div class="tools-grid">
+            <div class="tool-card">
+              <span style="font-size:1.3rem;margin-bottom:6px;display:block">💡</span>
+              <div class="tool-name" style="margin-bottom:4px">Iluminación natural</div>
+              <div class="tool-desc">Fotografía de día con luz natural. Abre todas las cortinas y apaga las luces artificiales para evitar colores amarillos.</div>
+            </div>
+            <div class="tool-card">
+              <span style="font-size:1.3rem;margin-bottom:6px;display:block">🧹</span>
+              <div class="tool-name" style="margin-bottom:4px">Ordena antes de fotografiar</div>
+              <div class="tool-desc">El tour se ve todo el espacio. Retira objetos personales, acomoda cojines, baja la tapa del baño. Una toma limpia vale el doble.</div>
+            </div>
+            <div class="tool-card">
+              <span style="font-size:1.3rem;margin-bottom:6px;display:block">📐</span>
+              <div class="tool-name" style="margin-bottom:4px">Coloca la cámara al centro</div>
+              <div class="tool-desc">Para 360°, párate en el centro del cuarto. Para panorámicas, comienza de una pared a otra sin cortar nada importante en los bordes.</div>
+            </div>
+            <div class="tool-card">
+              <span style="font-size:1.3rem;margin-bottom:6px;display:block">🚶</span>
+              <div class="tool-name" style="margin-bottom:4px">Una foto por habitación</div>
+              <div class="tool-desc">Para 360°: 1 foto por cuarto, parado al centro. Para galería normal: 3–5 fotos por habitación desde ángulos distintos.</div>
+            </div>
+            <div class="tool-card">
+              <span style="font-size:1.3rem;margin-bottom:6px;display:block">🤳</span>
+              <div class="tool-name" style="margin-bottom:4px">Sostén firme o usa trípode</div>
+              <div class="tool-desc">El movimiento arruina las fotos 360°. Si usas celular, apóyalo en una mesa o consigue un mini-trípode (~$150 MXN en Amazon).</div>
+            </div>
+            <div class="tool-card">
+              <span style="font-size:1.3rem;margin-bottom:6px;display:block">🚫</span>
+              <div class="tool-name" style="margin-bottom:4px">Evita el flash</div>
+              <div class="tool-desc">El flash crea sombras duras y reflejo en ventanas. Mejor ISO alto en cámara que flash directo. Las apps de 360° lo controlan solas.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD ZONE -->
+  <div class="upload-zone" id="drop-zone"
+       ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+    <input type="file" id="file-input" multiple accept="image/*" onchange="handleFiles(this.files)"/>
+    <div class="upload-icon">📤</div>
+    <h3>Arrastra tus fotos aquí o haz clic para seleccionar</h3>
+    <p id="upload-hint-text">JPG, PNG, HEIC — puedes subir múltiples fotos a la vez</p>
+    <div class="upload-formats">
+      <span class="fmt-pill">JPG</span>
+      <span class="fmt-pill">PNG</span>
+      <span class="fmt-pill">HEIC</span>
+      <span class="fmt-pill">HEIF</span>
+      <span class="fmt-pill">WEBP</span>
+      <span class="fmt-pill">Hasta 50 MB c/u</span>
+    </div>
+  </div>
+
+  <!-- FILE LIST -->
+  <div class="file-list" id="file-list"></div>
+
+  <!-- SUMMARY BAR -->
+  <div class="summary-bar" id="summary-bar" style="display:none">
+    <div class="sum-pill"><span class="sum-dot" style="background:#1a6b4a"></span><span id="sum-total">0 fotos</span></div>
+    <div class="sum-pill" id="sum-360-pill" style="display:none"><span class="sum-dot" style="background:#1a6b4a"></span><span id="sum-360">0 en 360°</span></div>
+    <div class="sum-pill" id="sum-pano-pill" style="display:none"><span class="sum-dot" style="background:#2563a8"></span><span id="sum-pano">0 panorámicas</span></div>
+    <div class="sum-pill" id="sum-normal-pill" style="display:none"><span class="sum-dot" style="background:#888"></span><span id="sum-normal">0 normales</span></div>
+  </div>
+
+  <!-- PROPERTY DETAILS -->
+  <div style="margin-bottom:0.75rem">
+    <div class="type-section-label">Datos de la propiedad</div>
+  </div>
+  <div class="details-grid">
+    <div class="field">
+      <label>Nombre o título de la propiedad</label>
+      <input type="text" placeholder="Ej: Casa Lomas de Chapultepec" id="prop-name"/>
+    </div>
+    <div class="field">
+      <label>Ciudad / Colonia</label>
+      <input type="text" placeholder="Ej: Polanco, CDMX" id="prop-city"/>
+    </div>
+    <div class="field">
+      <label>Tipo de propiedad</label>
+      <select id="prop-type">
+        <option value="">Selecciona...</option>
+        <option>Casa</option>
+        <option>Departamento</option>
+        <option>Local comercial</option>
+        <option>Oficina</option>
+        <option>Terreno</option>
+        <option>Airbnb</option>
+        <option>Otro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tu correo de contacto</label>
+      <input type="email" placeholder="para enviarte el link del tour" id="prop-email"/>
+    </div>
+    <div class="field full">
+      <label>Descripción breve (opcional)</label>
+      <textarea placeholder="Ej: 4 recámaras, 3 baños, jardín, 280 m². Zona residencial tranquila." id="prop-desc"></textarea>
+    </div>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="submit-section">
+    <button class="submit-btn" id="submit-btn" onclick="startProcessing()" disabled>
+      <span id="submit-icon">⚙️</span>
+      <span id="submit-label">Sube al menos una foto para continuar</span>
+    </button>
+    <p class="submit-note">Tu tour estará listo en 24–48 h. Te enviamos el link por correo. Sin compromiso de pago hasta ver el resultado.</p>
+  </div>
+</div>
+
+<!-- PROCESSING MODAL -->
+<div class="modal-overlay" id="proc-modal">
+  <div class="modal" id="proc-modal-inner">
+    <div id="proc-view">
+      <h3>Procesando tu tour</h3>
+      <p id="proc-desc">Estamos analizando tus fotos y construyendo el recorrido virtual...</p>
+      <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="progress-label" id="prog-label">Iniciando...</div>
+    </div>
+    <div id="done-view" style="display:none">
+      <div style="font-size:2.5rem;margin-bottom:0.75rem">🎉</div>
+      <h3>¡Tu tour está listo!</h3>
+      <p>Compártelo directamente desde aquí o espera el link en tu correo.</p>
+      <div class="result-link" onclick="copyTourLink()">
+        <span>3dhome.mx/v/<strong id="tour-slug">casa-abc123</strong></span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </div>
+      <div class="share-row">
+        <div class="share-chip" onclick="shareWA()">💬 WhatsApp</div>
+        <div class="share-chip" onclick="shareFB()">📘 Facebook</div>
+        <div class="share-chip" onclick="shareEmail()">✉️ Email</div>
+      </div>
+      <div style="margin-top:1rem">
+        <a href="3dhome-visor.html" style="display:inline-block;margin-top:0.5rem;font-size:0.85rem;color:var(--accent);font-weight:500;text-decoration:none">Ver mi tour →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let uploadedFiles = [];
+let selectedType = 'normal';
+
+// ── TYPE SELECTOR ──
+function selectType(type) {
+  selectedType = type;
+  ['360','pano','normal'].forEach(t => {
+    document.getElementById('type-'+t).classList.remove('selected');
+  });
+  document.getElementById('type-'+type).classList.add('selected');
+  updateUploadHint();
+  // Auto-open tools panel when 360 selected
+  if (type === '360') openTools('apps');
+}
+
+function updateUploadHint() {
+  const hints = {
+    '360': 'Fotos equirectangulares (2:1) — Google Street View, Ricoh Theta, Insta360',
+    'pano': 'Fotos panorámicas — modo Pano de iPhone o Android',
+    'normal': 'JPG, PNG, HEIC — cualquier foto de celular o cámara'
+  };
+  document.getElementById('upload-hint-text').textContent = hints[selectedType];
+}
+
+// ── TOOLS PANEL ──
+function openTools(tab) {
+  const panel = document.getElementById('tools-panel');
+  panel.classList.remove('closed');
+  showTab(tab);
+  setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'nearest' }), 100);
+}
+function toggleTools() {
+  document.getElementById('tools-panel').classList.toggle('closed');
+}
+function showTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display='none');
+  document.querySelectorAll('.ttab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+tab).style.display='block';
+  const tabs = ['apps','camaras','convertir','tips'];
+  document.querySelectorAll('.ttab')[tabs.indexOf(tab)]?.classList.add('active');
+}
+
+// ── FILE HANDLING ──
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragover');
+}
+function handleDragLeave(e) {
+  document.getElementById('drop-zone').classList.remove('dragover');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+}
+
+function detectPhotoType(file, img) {
+  const ratio = img.naturalWidth / img.naturalHeight;
+  if (Math.abs(ratio - 2) < 0.15) return '360';
+  if (ratio > 2.5) return 'pano';
+  return 'normal';
+}
+
+function handleFiles(fileList) {
+  const newFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  newFiles.forEach(file => {
+    const id = Date.now() + Math.random();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const autoType = detectPhotoType(file, img);
+        const entry = { id, file, url: e.target.result, type: autoType };
+        uploadedFiles.push(entry);
+        renderFileList();
+        updateSubmitBtn();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+const typeLabels = { '360':'360°', 'pano':'Panorámica', 'normal':'Normal' };
+const typeBadge = { '360':'badge-360', 'pano':'badge-pano', 'normal':'badge-normal' };
+
+function renderFileList() {
+  const list = document.getElementById('file-list');
+  list.innerHTML = '';
+  uploadedFiles.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'file-item';
+    const sizeMB = (f.file.size / 1048576).toFixed(1);
+    div.innerHTML = `
+      <div class="file-thumb"><img src="${f.url}" alt=""/></div>
+      <div class="file-info">
+        <div class="file-name">${f.file.name}</div>
+        <div class="file-meta">${sizeMB} MB · Detectado: ${typeLabels[f.type]}</div>
+      </div>
+      <span class="file-type-badge ${typeBadge[f.type]}">${typeLabels[f.type]}</span>
+      <button class="file-remove" onclick="removeFile(${i})">✕</button>`;
+    list.appendChild(div);
+  });
+  updateSummary();
+}
+
+function removeFile(idx) {
+  uploadedFiles.splice(idx, 1);
+  renderFileList();
+  updateSubmitBtn();
+}
+
+function updateSummary() {
+  const bar = document.getElementById('summary-bar');
+  if (!uploadedFiles.length) { bar.style.display='none'; return; }
+  bar.style.display='flex';
+  const c360 = uploadedFiles.filter(f=>f.type==='360').length;
+  const cpano = uploadedFiles.filter(f=>f.type==='pano').length;
+  const cnorm = uploadedFiles.filter(f=>f.type==='normal').length;
+  document.getElementById('sum-total').textContent = uploadedFiles.length + ' foto' + (uploadedFiles.length!==1?'s':'') + ' seleccionada' + (uploadedFiles.length!==1?'s':'');
+  const s360 = document.getElementById('sum-360-pill'); s360.style.display = c360?'flex':'none';
+  document.getElementById('sum-360').textContent = c360 + ' en 360°';
+  const spano = document.getElementById('sum-pano-pill'); spano.style.display = cpano?'flex':'none';
+  document.getElementById('sum-pano').textContent = cpano + ' panorámica' + (cpano!==1?'s':'');
+  const snorm = document.getElementById('sum-normal-pill'); snorm.style.display = cnorm?'flex':'none';
+  document.getElementById('sum-normal').textContent = cnorm + ' normal' + (cnorm!==1?'es':'');
+}
+
+function updateSubmitBtn() {
+  const btn = document.getElementById('submit-btn');
+  const lbl = document.getElementById('submit-label');
+  if (!uploadedFiles.length) {
+    btn.disabled = true;
+    lbl.textContent = 'Sube al menos una foto para continuar';
+  } else {
+    btn.disabled = false;
+    lbl.textContent = 'Generar mi tour virtual →';
+  }
+}
+
+// ── PROCESSING ──
+const stages = [
+  [12, 'Subiendo archivos...'],
+  [28, 'Analizando tipo de fotografía...'],
+  [45, 'Reconstruyendo espacios...'],
+  [62, 'Creando puntos de navegación...'],
+  [78, 'Optimizando para todos los dispositivos...'],
+  [90, 'Generando tu link único...'],
+  [100, '¡Listo!']
+];
+
+function startProcessing() {
+  const name = document.getElementById('prop-name').value || 'mi-propiedad';
+  const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'') + '-' + Math.random().toString(36).slice(2,7);
+  document.getElementById('tour-slug').textContent = slug;
+
+  document.getElementById('proc-modal').classList.add('open');
+  document.getElementById('proc-view').style.display='block';
+  document.getElementById('done-view').style.display='none';
+
+  // Desc based on detected types
+  const has360 = uploadedFiles.some(f=>f.type==='360');
+  const hasPano = uploadedFiles.some(f=>f.type==='pano');
+  const modeText = has360 ? 'modo 360° inmersivo' : hasPano ? 'modo panorámico interactivo' : 'galería navegable por escenas';
+  document.getElementById('proc-desc').textContent = `Construyendo tu tour en ${modeText}...`;
+
+  let i = 0;
+  const tick = () => {
+    if (i >= stages.length) {
+      setTimeout(() => {
+        document.getElementById('proc-view').style.display='none';
+        document.getElementById('done-view').style.display='block';
+      }, 400);
+      return;
+    }
+    const [pct, label] = stages[i++];
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('prog-label').textContent = label;
+    setTimeout(tick, i === stages.length ? 300 : 700);
+  };
+  tick();
+}
+
+// ── SHARE (modal done) ──
+const TOUR_BASE = 'https://3dhome.mx/v/';
+function getTourUrl() { return TOUR_BASE + document.getElementById('tour-slug').textContent; }
+function copyTourLink() {
+  if (navigator.clipboard) navigator.clipboard.writeText(getTourUrl());
+  document.getElementById('tour-slug').closest('.result-link').style.background='#c2e8d5';
+  setTimeout(() => { document.getElementById('tour-slug').closest('.result-link').style.background=''; }, 1200);
+}
+function shareWA() { window.open(`https://wa.me/?text=${encodeURIComponent('Recorre esta propiedad en 3D → '+getTourUrl())}`, '_blank'); }
+function shareFB() { window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getTourUrl())}`, '_blank'); }
+function shareEmail() { window.open(`mailto:?subject=Tour virtual&body=Explora la propiedad en 3D: ${getTourUrl()}`, '_blank'); }
+</script>
+</body>
+</html>
